@@ -31,13 +31,13 @@ no-calorie sweeteners (LNCS) and cognitive decline:
 
 <img src="images/paper_title.png" style="width:100.0%" />
 
-<br> <br>
+<br>
 
 ## Example
 
 For example, consider this estimate, reported in the abstract on page 1:
 
-<img src="images/abstract.png" style="width:75.0%" />
+<img src="images/abstract.png" width="500" />
 
 > “Among participants aged younger than 60 years, consumption of
 > combined LNCSs in the highest tertiles was associated with a faster
@@ -57,9 +57,9 @@ Perhaps it is a typo. Let’s look up this value in appendix eTable 6:
 
 <br>
 
-<img src="images/table6_p.png" style="width:75.0%" />
+<img src="images/table6_p.png" width="500" />
 
-<br> <br>
+<br>
 
 :white_check_mark: The values for the estimate and confidence interval
 match.
@@ -289,12 +289,8 @@ paper.
 
 The correct values are: $-0.0006$ $(-0.001; -0.0002)$
 
-**Mini summary**
-
-:triangular_flag_on_post: 6 problematic cases identified, of which:
-
-- 5 likely typos
-- 1 unexplained
+**Mini summary**: :triangular_flag_on_post: 6 problematic cases
+identified (of which: 5 likely typos, 1 unexplained)
 
 ## 2. Duplicate values
 

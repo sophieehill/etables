@@ -3,7 +3,6 @@ title: "Errors and inconsistencies in quantiative results reported in Gonçalves
 output: 
   rmarkdown::github_document:
     toc: true
-    toc_depth: 2
     number_sections: false
 date: "2025-09-06"
 author: "Sophie E. Hill"
@@ -127,13 +126,12 @@ This post identifies a number of errors and inconsistencies in the quantitative 
 ![](images/paper_title.png){width="100%"}
 
 <br>
-<br>
 
 ## Example
 
 For example, consider this estimate, reported in the abstract on page 1:
 
-![](images/abstract.png){width="75%"}
+![](images/abstract.png){width="500"}
 
 
 > "Among participants aged younger than 60 years, consumption of combined LNCSs in the highest tertiles was associated with a faster decline in verbal fluency (second tertile: **β = −0.016, 95% CI −0.040 to −0.008** ..."
@@ -147,9 +145,8 @@ Perhaps it is a typo. Let's look up this value in appendix eTable 6:
 
 <br>
 
-![](images/table6_p.png){width="75%"}
+![](images/table6_p.png){width="500"}
 
-<br>
 <br>
 
 :white_check_mark: The values for the estimate and confidence interval match. 
@@ -320,12 +317,7 @@ pap |>
 
 ```
 
-**Mini summary**
-
-:triangular_flag_on_post: 6 problematic cases identified, of which:
-
-- 5 likely typos
-- 1 unexplained
+**Mini summary**: :triangular_flag_on_post: 6 problematic cases identified (of which: 5 likely typos, 1 unexplained)
 
 
 
