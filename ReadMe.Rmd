@@ -1,0 +1,786 @@
+---
+title: "Errors and inconsistencies in quantiative results reported in Gonçalves et al. (2025)"
+output: 
+  rmarkdown::github_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+date: "2025-09-06"
+author: "Sophie E. Hill"
+---
+
+```{css echo=FALSE, include = FALSE}
+.bordered {
+  display: inline-block;
+}
+
+.bordered img {
+  border: 1px solid black;
+  display: block;
+}
+```
+
+```{r setup, include=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE)
+
+library(tidyverse)
+options(scipen=10000)
+
+# Pre-formatting:
+# removed estimates that are missing due to being "reference categories"
+# saved values as characters to preserve formatting
+# saved original p values (p_original) and then a version without non-numeric characters like "<0.001" (p_char)
+# Replaced "Trail-making test", "Trail-Making test" with "Executive function" to be consistent across tables
+# n's are taken from the table title, except for the subsets which I added:
+# Tables 1, 2, 3, 5; n = 12,772
+# Table 4; n = 6,041
+# Table 6, 7; Subset <60 n=10,103; subset 60+ n=2,669
+# Table 8, 9; Without diabetes (n = 11,363) With diabetes (1,409)
+
+# Read all variables as characters to preserve formatting
+dat <- read.csv("data/appendix_tables.csv", colClasses = "character")
+glimpse(dat)
+
+dat <-
+  dat |>
+  mutate(
+    table_id = as.integer(table_id),
+    n = as.integer(n),
+    est = as.numeric(est),
+    ci_lower = as.numeric(ci_lower),
+    ci_upper = as.numeric(ci_upper),
+    p = as.numeric(p),
+    outcome = str_replace_all(outcome, "Trail-Making test", "Executive function"),
+    subset = case_when(
+      subset=="< 60 years" ~ "<60",
+      subset=="60+ years" ~ "60+",
+      subset=="Without diabetes" ~ "w/o db",
+      subset=="With diabetes" ~ "w db",
+      n==12772 ~ "All",
+      n==6041 ~ "Complete",
+      TRUE ~ subset
+      ),
+    model = case_when(
+      model=="Unadjusted" ~ "Unadj",
+      model=="Model 1" ~ "Mod 1",
+      model=="Model 2" ~ "Mod 2",
+      is.na(model) ~ "Mod 2", # Tables 5-9 only show Mod 2 estimates
+      TRUE ~ model
+    ),
+    var = str_replace_all(var, "Tertile ", "T"),
+    outcome = case_when(
+      outcome=="Verbal fluency" ~ "VF",
+      outcome=="Global cognition" ~ "GC",
+      outcome=="Executive function" ~ "EF",
+      outcome=="Memory" ~ "M",
+      TRUE ~ outcome
+    )
+  ) |>
+  select(X, table_id, 
+         n, model, subset, var, outcome,
+         est, ci_lower, ci_upper, p, 
+         est_char, ci_lower_char, ci_upper_char, p_char, p_original)
+
+
+# _char = variable stored as character (to preserve formatting from table)
+# no suffix = variable stored as numeric
+# p_original = original values, including non-numeric characters (e.g. "<0.001")
+
+# Create "long" version of data
+# where est, ci_lower, ci_upper are turned into "value"
+# so we can easily count how many are multiples of 0.008
+dat_8 <- 
+  dat |>
+  select(table_id, n, var, outcome, 
+         subset, model, p,
+         est, ci_lower, ci_upper) |>
+  pivot_longer(cols = c("est", "ci_lower", "ci_upper")) |>
+  mutate(div8 = ifelse(value %% 0.008 == 0, 1, 0)) 
+
+# Import estimates from text of paper
+# Note: only estimate and CIs are extracted, not the variables/model specs
+# Search in the paper to match
+pap <- read.csv("data/paper_text_estimates.csv", colClasses = "character")
+
+pap <- 
+  pap |>
+  rename(est = estimate) |>
+  mutate(
+    est_char = est,
+    ci_lower_char = ci_lower,
+    ci_upper_char = ci_upper,
+    est = as.numeric(est),
+    ci_lower = as.numeric(ci_lower),
+    ci_upper = as.numeric(ci_upper)
+  )
+
+```
+
+
+This post identifies a number of errors and inconsistencies in the quantitative results presented in [this paper](https://www.neurology.org/doi/10.1212/WNL.0000000000214023), which claims to find a relationship between consumption of low- and no-calorie sweeteners (LNCS) and cognitive decline:
+
+> Gonçalves, Natalia Gomes, Euridice Martinez-Steele, Paulo A. Lotufo, et al. ‘Association Between Consumption of Low- and No-Calorie Artificial Sweeteners and Cognitive Decline’. Neurology 105, no. 7 (2025): e214023. <https://doi.org/10.1212/WNL.0000000000214023>.
+
+<br>
+
+![](images/paper_title.png){width="100%"}
+
+<br>
+<br>
+
+## Example
+
+For example, consider this estimate, reported in the abstract on page 1:
+
+![](images/abstract.png){width="75%"}
+
+
+> "Among participants aged younger than 60 years, consumption of combined LNCSs in the highest tertiles was associated with a faster decline in verbal fluency (second tertile: **β = −0.016, 95% CI −0.040 to −0.008** ..."
+
+It is immediately obvious that the confidence interval $(-0.040, -0.008)$ is not centred around the point estimate $(-0.016)$. 
+
+``` {r}
+(-0.040 + -0.008)/2
+```
+Perhaps it is a typo. Let's look up this value in appendix eTable 6:
+
+<br>
+
+![](images/table6_p.png){width="75%"}
+
+<br>
+<br>
+
+:white_check_mark: The values for the estimate and confidence interval match. 
+
+_But_ now we can see another issue... 
+
+The 95% confidence interval does not cover 0, so the p-value must be $<0.05$, by definition. 
+
+However, the value reported here is $p = 0.234$.
+
+That is such a large discrepancy that it cannot be explained as a rounding error.
+
+In fact, there is a more obvious, though concerning, explanation.
+
+If we change the upper bound of the confidence interval from $-0.008$ to $+0.008$, then the estimate is now correctly centred:
+
+```{r}
+(-0.040 + 0.008)/2
+```
+
+Since the confidence interval takes the form $CI = Estimate \pm (1.96 \times SE)$, we can back out the standard error like this:
+
+``` {r}
+ci_lower <- -0.040
+ci_upper <- 0.008
+se <- (ci_upper - ci_lower)/(2*1.96)
+se
+```
+With this value, we can calculate the p-value directly:
+
+```{r}
+est <- -0.016
+z <- abs(est / se)
+p <- 2 * (1 - pnorm(z))
+p
+```
+This gives us $p = 0.191$, much closer to the value reported in the table of $p = 0.234$. 
+
+(We would not expect the values to match exactly since the confidence intervals are only reported to 3 decimal places and this will introduce rounding errors in the computation of the p-value.)
+
+_In other words: one of the key estimates presented in this paper likely contains a typo in its confidence interval. Rather than being evidence of an association between sweeteners and cognitive decline, as claimed in the text, it is not statistically significant._
+
+## Summary
+
+Unfortunately, this example is not an isolated issue.
+
+Across 9 appendix tables with 256 regression coefficients, I find:
+
+- **5** cases of **estimates outside their reported confidence interval**
+- **46 duplicates** (i.e. estimate/CI combinations with an identical match in the same table)
+- At least **20 cases** of **asymmetric confidence intervals**, which cannot be explained as rounding errors
+- **17 values rounded to 4 decimal places** (all others to 3 decimal places), indicating manual editing of tables
+- Over **50%** of all estimates and confidence intervals are **multiples of 0.008**
+
+
+
+It is difficult to diagnose exactly what is going on without access to the underlying data and code. 
+
+However, two broad conclusions can be drawn:
+
+1. There are many **errors and inconsistencies** in the results which appear to be the result of manual editing.
+2. There are **strange patterns** in the results which, if genuine, should have been noted and explained by the authors.
+
+
+## Context
+
+The replication materials, including the underlying data and code for their analyses, are not available. So my comments are based only on the results presented in the paper and the appendix.
+
+In order to examine the results systematically, I extracted two datasets:
+
+1. CSV of all estimates cited in the main text (64 estimates): `paper_text_estimates.csv`
+2. CSV of all regression tables in the appendix (9 tables, 256 estimates): `appendix_tables.csv`
+
+Both datasets are available in this repo. (Note that both were created with LLM-aided extraction, so there may be errors. Always check values against the paper or appendix pdf.)
+
+The first dataset contains estimates and confidence intervals cited in the main text of the paper in this format $(\beta = −0.016$, 95% CI $−0.040$ to $−0.008)$, along with the page number.
+
+The second dataset contains estimates, confidence intervals, and p-values from all 9 tables in the appendix (labelled "eTable 1", "eTable 2", etc.).
+
+The tables report results from different specifications of the core model, where the explanatory variable is consumption of sweeteners interacted with a time variable and the outcome is a measure of cognitive health, on various subsets of the data.
+
+**Explanatory variables:**
+
+- Categorical variable for tertiles of total LNCS consumption in mg
+- Binary variable for daily LNCS consumption (vs no/sporadic consumption)
+- Continuous variable of individual LNCS consumption in mg
+
+**Outcome variables:**
+
+- Memory (z-score of memory tests)
+- Verbal fluency (z-score average of phonemic and semantic verbal fluency tests)
+- Executive function (z-score of Trail-Making Test B)
+- Global Cogition (composite score)
+
+**Subsets:**
+
+- Full sample (n = 12,772)
+- Complete cases (n = 6,041)
+- Under/over 60s (n = 10,103 / n = 2,669)
+- Without/with diabetes (n = 11,363 / n = 1,409)
+
+**Models:**
+
+- Unadjusted
+- Model 1 (including age, sex, race/ ethnicity, education, and income)
+- Model 2 (including Model 1 + physical activity, body mass index (cubic function), hypertension, diabetes, cardiovascular disease, depressive symptoms, alcohol consumption, smoking, total calories, and MIND diet)
+
+
+
+
+## 1. Estimates outside confidence interval
+
+I have identified **5 cases** in the appendix tables (9 tables, 256 estimates) where the estimates lies outside its reported confidence interval:
+
+```{r echo=TRUE}
+dat |> 
+  filter(est < ci_lower | est > ci_upper) |>
+  select(table_id, model, outcome, subset, var, 
+         est, ci_lower, ci_upper)
+
+```
+
+The estimates in rows 2-5 all come from eTable 9 and likely represent sign errors. This is clearest for the estimates from rows 2 and 4 since they have larger values:
+
+-   $0.035$ $(0.104, 0.176)$ $\rightarrow$ the lower bound should be $-0.104$
+-   $0.098$ $(-0.222, 0.026)$ $\rightarrow$ the estimate should be $-0.098$
+
+```{r eval=TRUE, echo=TRUE}
+(-0.104 + 0.176)/2
+(-0.222 + 0.026)/2
+```
+
+Rows 3 and 5 are probably also sign errors, though it's harder to tell with these values: 
+
+- $0.001$ $(-0.002, 0.000)$
+- $0.001$ $(-0.001, 0.000)$
+
+
+![](images/1_table9.png){width="500"}
+
+
+<br>
+<br>
+
+Row 1 is harder to diagnose. This is the coefficient for Aspartame on Memory among the <60s in eTable 7: 
+
+$-0.016$ $(-0.001, 0.001)$
+
+All the coefficients for Aspartame on the other outcome variables in this table are 0.000.
+
+![](images/1_table7.png){width="500"}
+
+<br>
+<br>
+
+There is also **1 case** where an estimate cited in the paper lies outside its confidence interval (p.6):
+
+> "Figure 3 shows the association between individual LNCS consumption and cognitive decline. There was a faster rate of decline in memory, verbal fluency, and global cognitive with higher consumption of ... sorbitol (memory: β = −0.001, 95% CI −0.001 to −0.0001; verbal fluency: β = −0.0008, 95% CI −0.001 to −0.0003; global cognition: **β = −0.0006, 95% CI −0.001 to −0.002**), ... (Figure 3 and eTable 5)"
+
+Clearly this is a typo, since the confidence interval as written is backwards: $(−0.001$, $−0.002)$
+Checking against eTable 5 in the appendix, we can see that the CI upper bound was mistranscribed in the paper. 
+
+The correct values are: $-0.0006$ $(-0.001; -0.0002)$
+
+``` {r include = FALSE}
+pap |>
+  filter(est < ci_lower | est > ci_upper)
+
+```
+
+**Mini summary**
+
+:triangular_flag_on_post: 6 problematic cases identified, of which:
+
+- 5 likely typos
+- 1 unexplained
+
+
+
+## 2. Duplicate values
+
+Many of the tables contain identical estimates and CIs. 
+
+Defining duplicates as rows where `(estimate, ci_lower, ci_upper)` has an identical match within the same table, there are **46 duplicates**. 
+
+6 out of the 9 tables contain duplicate values (eTables 1, 2, 4, 6, 7, 9).
+
+eTable 7 has a particularly large proportion of duplicates ($\frac{19}{56} = 34\%$ of all estimates in the table).
+
+
+```{r echo = FALSE}
+
+check_dupes_within_table <- function(df, cols, table_col = "table_id") {
+  df %>%
+    group_by(!!sym(table_col)) %>%
+    mutate(row_num = row_number()) %>%
+    group_by(!!!syms(c(table_col, cols))) %>%
+    filter(n() > 1) %>%
+    arrange(!!sym(table_col), !!!syms(cols)) %>%
+    ungroup()
+}
+
+
+dupes <- check_dupes_within_table(dat, c("est", "ci_lower", "ci_upper")) |>
+  select(table_id, model, outcome, subset, var, est, ci_lower, ci_upper, p) 
+
+cat("Number of duplicated est/CIs, by table:")
+dupes |> group_by(table_id) |> tally() |> as.data.frame()
+
+cat("Duplicated est/CIs:")
+dupes |> rename(id = table_id) |> as.data.frame()
+
+```
+
+It is useful to highlight the duplicates on the original tables to see where they occur. 
+
+<br>
+
+![](images/dupe_1.png){width="500"}
+
+<br> 
+<br>
+
+![](images/dupe_2.png){width="500"}
+
+
+<br>
+<br>
+
+![](images/dupe_4.png){width="500"}
+
+<br>
+<br>
+
+
+![](images/dupe_6.png){width="500"}
+
+<br>
+<br>
+
+
+![](images/dupe_7.png){width="500"}
+
+<br>
+<br>
+
+
+![](images/dupe_9.png){width="500"}
+
+<br>
+
+
+## 3. Asymmetric confidence intervals 
+
+While confidence intervals can be asymmetric in some contexts (e.g. bootstrapping, log-transformations), there is no indication in the paper that those contexts are relevant here. The tables present results from "linear mixed-effects models", with estimates and 95% confidence intervals. 
+
+So we expect the confidence intervals here to be symmetric around their point estimates. 
+
+However, even accounting for rounding errors, we can find many examples of asymmetric confidence intervals. 
+
+We have already found one obvious example in the abstract of the paper.
+
+![](images/abstract.png){width="500"}
+
+But it is easy to find more. 
+
+For example, we can filter the data to find estimates that do not match the middle of the confidence interval but have the same absolute value. These are clearly more sign errors:
+
+
+```{r echo = FALSE}
+
+dat <- dat |>
+  mutate(
+    ci_mid = round((ci_lower + ci_upper)/2, 4),
+    est_ci_mid_diff = abs(est - ci_mid)
+    )
+
+dat |>
+  filter(!(est == ci_mid)) |>
+  filter(abs(est) == abs(ci_mid)) |>
+  select(table_id, model, outcome, subset, var, est, ci_mid, ci_lower, ci_upper) |>
+  as.data.frame()
+
+
+```
+
+Note: the estimate for Tagatose on Verbal fluency in Table 9 was already identified as problematic in Section 1, since here the sign error means that the estimate $(0.098)$ is outside its confidence interval $(-0.222, 0.026)$. 
+
+However, we have now found two more problematic cases. These estimates are within their confidence intervals but have the wrong sign. 
+
+
+Next, let's look for more cases like the one in the abstract, where the confidence interval _would_ be symmetric if one of the bounds changed sign. 
+
+To do this, let's filter the data to cases where the estimate has the same absolute value as the middle of the amended confidence interval (where one bound has flipped sign).
+
+``` {r echo = TRUE}
+dat |>
+  mutate(
+    ci_mid2 = (ci_lower - ci_upper)/2
+    ) |>
+  filter(!(est == ci_mid)) |>
+  filter(abs(est) == abs(ci_mid2)) |>
+  select(table_id, model, outcome, subset, var, est, ci_mid, ci_mid2, ci_lower, ci_upper) |>
+  as.data.frame()
+
+```
+We have found two more examples in addition to the estimate of $-0.016$ from the abstract.
+
+- Original: $-0.005$ $(-0.008, 0.002)$
+- Amended: $-0.005$ $(-0.008, -0.002)$
+
+```{r}
+(-0.008 + -0.002)/2
+```
+- Original: $0.001$ $(-0.002, 0.000)$
+- Amended: $0.001$ $(0.002, 0.000)$
+
+```{r}
+(0.002 + 0.000)/2
+```
+
+
+How many other estimates have asymmetric confidence intervals? It depends on how much tolerance we allow for rounding errors. 
+
+
+``` {r echo = FALSE}
+cat("Number of estimates more than 0 from CI mid: ", sum(dat$est_ci_mid_diff>0))
+cat("Number of estimates more than 0.001 from CI mid: ", sum(dat$est_ci_mid_diff>0.001))
+cat("Number of estimates more than 0.002 from CI mid: ", sum(dat$est_ci_mid_diff>0.002))
+cat("Number of estimates more than 0.003 from CI mid: ", sum(dat$est_ci_mid_diff>0.003))
+cat("Number of estimates more than 0.004 from CI mid: ", sum(dat$est_ci_mid_diff>0.004))
+
+```
+
+
+Recall that almost all values in the tables are presented to 3 decimal places. 
+
+Let's focus on examples that are unlikely to be attributable to rounding errors. Here are 20 cases where the difference between the estimate and the middle of the confidence interval is greater than 0.004: 
+
+
+``` {r echo = FALSE}
+cat("Cases where abs(est - ci_mid) > 0.004:")
+dat |>
+  filter(est_ci_mid_diff>0.004) |>
+  arrange(-est_ci_mid_diff) |>
+  select(table_id, model, outcome, subset, var, est, 
+         ci_mid, est_ci_mid_diff, ci_lower, ci_upper) |>
+  rename(diff = est_ci_mid_diff) |>
+  rename(id = table_id) |>
+  as.data.frame()
+```
+
+
+## 4. Inconsistent rounding
+
+Numerical values presented in the text of the paper and in the appendix tables are rounded inconsistently. The majority of the values are given to 3 decimal places, but a small number are given to 4 instead.
+
+```{r echo=FALSE}
+
+# Count decimal places
+
+count_dp <- function(x) {
+ if (grepl("\\.", x)) {
+   nchar(sub(".*\\.", "", x))
+ } else {
+   0
+ }
+}
+
+dat$dps_p <- sapply(dat$p_char, count_dp)
+dat$dps_est <- sapply(dat$est_char, count_dp)
+dat$dps_ci_lower <- sapply(dat$ci_lower_char, count_dp)
+dat$dps_ci_upper <- sapply(dat$ci_upper_char, count_dp)
+
+cat("Number of decimal places reported for estimates, CIs, and p-values:")
+dat |> 
+  select(dps_p, dps_est, dps_ci_lower, dps_ci_upper) |>
+  pivot_longer(names_prefix = "dps_", 
+               cols = dps_p:dps_ci_upper,
+               names_to = "type",
+               values_to = "decimals") |>
+  mutate(decimals = factor(decimals, levels = 3:4)) |>  
+  group_by(type, decimals, .drop = FALSE) |>
+  tally() |> 
+  as.data.frame()
+
+```
+
+We can see the majority of the 4dp values occur in eTable 5:
+
+```{r echo = FALSE}
+cat("Rows with some values to 4dps:")
+dat |> 
+  filter(!(dps_est==3) | !(dps_ci_upper==3)) |> 
+  select(table_id, outcome, est_char, ci_lower_char, ci_upper_char, p)
+
+```
+
+Why were some values rounded to 4dp? It seems that these were cases where:
+
+-   the estimate was cited directly in the text of the paper
+-   4dp were necessary to remove ambiguity or confusion
+
+For example, see this paragraph from the paper (4dp values in bold):
+
+> Figure 3 shows the association between individual LNCS consumption and cognitive decline. There was a faster rate of decline in memory, verbal fluency, and global cognitive with higher consumption of aspartame (memory: β = −0.002, 95% CI −0.003 to **−0.0004**, verbal fluency: β = −0.001, 95% CI −0.002 to **−0.0001**, global cognition: β = −0.001, 95% CI −0.002 to **−0.0004**), saccharin (memory: β = −0.010, 95% CI −0.016 to −0.003, verbal fluency: β = −0.005, 95% CI −0.008 to −0.002, global cognition: β = −0.008, 95% CI −0.011 to −0.002), sorbitol (memory: β = −0.001, 95% CI −0.001 to **−0.0001**; verbal fluency: β = **−0.0008**, 95% CI −0.001 to **−0.0003**; global cognition: β = **−0.0006**, 95% CI −0.001 to −0.002), and xylitol (memory: β = −0.032, 95% CI −0.056 to −0.016; verbal fluency: β = −0.016, 95% CI −0.032 to −0.001; global cognition: β = −0.016, 95% CI −0.032 to −0.008) (Figure 3 and eTable 5).
+
+There seem to be two distinct cases:
+
+1.  If one bound of the confidence interval is very close to 0, then it is reasonable to use more decimal places to make it clear whether the interval covers 0. For example, in Row 1, the confidence interval to 3dp would be (-0.003, -0.000), which is less clear than (-0.003, -0.0004).
+
+2.  If the confidence interval is very narrow and close to 0, then more decimal places may be needed to ensure that the estimate can be distinguished from the bounds. For example, in Row 13, estimate and CI rounded to 3dp would be -0.001 (-0.001, 0.000), which is less clear than -0.0005 (-0.001, 0.000).
+
+However, the authors did not apply these rules consistently. For example, in Row 2, the upper bound of the confidence interval has been extended to 4dp (-0.0001) but the estimate and lower bound have not, despite being the same value to 3dp (-0.001).
+
+It is reasonable that the authors wanted the values cited in the text to correspond to the same values in the appendix tables. However, their solution to this problem was less than ideal.
+
+It appears that the authors generated their results tables rounded to 3dp, and then manually edited specific values to 4dp. This violates basic principles of reproducibility and introduces the risk of manual errors or typos.
+
+Moreover, many of the values left rounded to 3dp are essentially uninterpretable. For example, in eTable 7 there are two estimates reported as $0.000 (0.000; 0.000)$ with very different p-values. A much better solution would have been to simply rescale the variables to make the coefficients larger.
+
+
+![](images/4_table7.png){width="500"}
+
+<br>
+
+
+## 5. Frequent multiples of 0.008
+
+A large proportion of the estimates and CI bounds are multiples of 0.008.
+
+In fact, in eTable 6, **all estimates and CIs** are multiples of 0.008.
+
+
+![](images/3_table6.png){width="500"}
+
+
+<br>
+
+Across all 9 tables, **56%** (!) of estimates and confidence interval bounds are divisible by 0.008:
+
+```{r include = FALSE}
+
+cat("Proportion of values divisible by 0.008 (all):")
+
+dat_8 |>
+  summarize(prop_div = round(sum(div8)/n(), 2)) |>
+  as.data.frame()
+
+```
+
+```{r echo = FALSE}
+
+cat("Proportion of values divisible by 0.008 (by type):")
+
+dat_8 |>
+  group_by(name) |>
+  summarize(prop_div = round(sum(div8)/n(), 2)) |>
+  as.data.frame()
+
+```
+
+```{r, include=FALSE}
+
+dat |>
+  mutate(
+    p8 = ifelse(p %% 0.008 ==0, 1, 0)
+  ) |>
+  summarize(p = round(sum(p8)/n(), 2)) |>
+  pull(p)
+
+```
+
+In contrast, only 11% of p-values are divisible by 0.008. 
+
+This is roughly in line with what we would expect under the null hypothesis where values are drawn from a uniform distribution over $[0,1]$ and rounded to 3 decimal places. (Since $1000/8 = 125$, if we drew numbers from 0 to 1,000 we would expect $126/1001 \approx 12.5\%$ to be divisible by 8.) 
+
+The frequency of 0.008 multiples varies by table, though all tables have some:
+
+```{r echo=FALSE}
+
+tab_props <- dat |>
+  select(table_id, est, ci_lower, ci_upper, p) |>
+  pivot_longer(cols = est:p) |>
+  filter(!(name == "p")) |>
+  mutate(div8 = ifelse(value %% 0.008 == 0, 1, 0)) |>
+  group_by(table_id) |>
+  summarize(prop_div = round(sum(div8)/n(), 2)) |>
+  arrange(-prop_div) |>
+  as.data.frame() 
+
+
+```
+
+```{r echo = FALSE}
+
+cat("Proportion of estimates + CIs divisible by 0.008, by table")
+tab_props
+
+```
+
+
+What could be causing this unusual pattern?
+
+
+Let's look at the proportion of estimates and CIs divisible by 0.008 across different categories.
+
+- **Explanatory variable**: Three different version of the main EV, which is then interacted with a "timescale" variable (which the text says is the age of the participant in each wave). Highest proportion for the tertiles (>70%), lower for the individual continuous variable (30-60%), least for the binary daily consumption variable (19%). 
+
+- **Outcome variables**: 55-60% across all four outcome variables. (All outcome variables are z-scores standardized based on Wave 1 mean and standard deviation. The raw scores represent counts, e.g. how many words recalled in the memory test, how many seconds to complete the trail-making test.)
+
+- **Subsets**: Lowest proportions (<20%) on the without/with diabetes subsets, highest proportions (>80%) on the complete case subset and under/over 60s
+
+- **Covariates**: Highest proportion (>70%) from estimates with no covariates (Unadjusted) or only demographic covariates (Model 1). Though note these are solely from eTables 1-4, all other tables present only estimates with full covariates (Model 2).
+
+- **Weights**: The paper states that inverse probability weighting (IPW) is used to account for attrition. Presumably IPW is not used in eTable 4 (even though it is mentioned in the table notes) since those results are based on "complete cases" - i.e., participants who took part in all three waves. If so, IPW is unlikely to explain the pattern, since eTable 4 displays a very high proportion of 0.008 multiples (94%).
+
+
+```{r echo=FALSE}
+
+dat_8 |>
+  group_by(var) |>
+  summarize(prop_div8 = round(sum(div8)/n(), 2)) |>
+  arrange(-prop_div8) |>
+  as.data.frame()
+
+dat_8 |>
+  group_by(outcome) |>
+  summarize(prop_div8 = round(sum(div8)/n(), 2)) |>
+  arrange(-prop_div8) |>
+  as.data.frame()
+
+dat_8 |>
+  group_by(subset) |>
+  summarize(prop_div8 = round(sum(div8)/n(), 2)) |>
+  arrange(-prop_div8) |>
+  as.data.frame()
+
+dat_8 |>
+  group_by(model) |>
+  summarize(prop_div8 = round(sum(div8)/n(), 2)) |>
+  arrange(-prop_div8) |>
+  as.data.frame()
+
+```
+
+The same pattern occurs among the estimates cited in the main text of the paper, although the overall proportion is lower (38%). 
+
+``` {r echo = FALSE}
+
+# Similar patterns in the estimates presented in the data
+prop_div8 <- pap |>
+  select(est, ci_lower, ci_upper, page) |>
+  pivot_longer(cols = est:ci_upper) |>
+  mutate(div8 = ifelse(value %% 0.008 == 0, 1, 0)) |>
+  summarise(prop_div8 = round(sum(div8) / n(), 2)) |>
+  pull()
+
+cat("Proportion of estimates & CIs cited in paper that are divisible by 0.008:\n", prop_div8)
+
+cat("By type: ")
+
+pap |>
+  select(est, ci_lower, ci_upper, page) |>
+  pivot_longer(cols = est:ci_upper) |>
+  mutate(div8 = ifelse(value %% 0.008 == 0, 1, 0)) |>
+  group_by(name) |>
+  summarise(prop_div8 = round(sum(div8) / n(), 2)) |>
+  as.data.frame()
+
+```
+
+<br>
+
+
+Sometimes odd patterns in regression coefficients may be a warning sign about problems with the units or distribution of the explanatory variable. This is unlikely to fully explain the pattern of 0.008 multiples observed here, since it also occurs when the explanatory variable is categorical (tertiles of consumption). 
+
+
+```{r echo = FALSE, include = TRUE}
+
+tabs <- 
+  tribble(
+    ~table_id, ~iv, ~subset,
+    1, "Tertile", "No",
+    2, "Tertile", "No", 
+    3, "Binary", "No", 
+    4, "Tertile", "Yes", 
+    5, "Continuous", "No", 
+    6, "Tertile", "Yes", 
+    7, "Continuous", "Yes", 
+    8, "Tertile", "Yes", 
+    9, "Continuous", "Yes",
+  )
+
+tabs <- left_join(tabs, tab_props, by = "table_id")
+
+tabs |> arrange(-prop_div)
+
+```
+
+However, let's review the details from the paper and appendix for completeness:
+
+Sweetener consumption is derived from a self-reported Food Frequency Questionnaire. From the appendix:
+
+> "Food and drink consumption in the last 12 months was assessed at baseline using a validated Food Frequency Questionnaire (FFQ) with 114 items. For each food item, the frequency of consumption ("more than 3 times/day, "2-3 times/day, "once/day", "5-6 times/week", "2-4 times/week", "once/week", "1-3 times/month", and "never/rarely") and the number of portions consumed (using standardized portion sizes) were obtained. The amount (grams/day) of each food item was calculated by multiplying the consumption frequency (3 for >3 times/day, 2 for 2-3 times/day, 1 for 1 time/day, 0.8 for 5-6 times/week, 0.4 for 2-4 times/week, 0.1 for 1 time/week, 0.07 for 1-3 times/month, and 0 for never/almost never) by the number of portions and the portion weight. The energy content of the food and drink items in kcal was calculated using the information on energy in 100g estimated by the University of Minnesota Nutrition Data System for Research (NDSR) software. All mixed dishes identified through the FFQ were decomposed into individual ingredients based on household standard recipes according to the national literature."
+
+The derived variable, total sweetener consumption (mg/day), is heavily skewed. The mean daily intake of all sweeteners is 92.1mg, and the thresholds of the tertiles are:
+
+- 1st tertile: 0.02mg to 37.2mg
+- 2nd tertile: 37.3mg to 102.3mg
+- 3rd tertile: 102.4mg to 856.5mg
+
+Also of note is the composition of different sweeteners. Sorbitol alone accounts for $\frac{63.8}{92.1} \approx 70\%$ of mean daily LNCS consumption. 
+
+(For context: according to Google, 1 stick of sugar-free gum contains about 1250mg of sorbitol and 1 can of Diet Coke contains about 200mg of aspartame. So these levels of LNCS consumption don't seem particularly high, which I guess you might expect among middle-aged Brazilian civil servants...)
+
+In eTable 3 a binary variable is used, representing daily consumption of LNCS vs no/sporadic consumption. 
+
+In eTables 5, 7, and 9, consumption of individual sweeteners in mg is used as the EV. However, this note adds a rather confusing detail: apparently for the individual LNCS variables the authors binned the consumption in intervals of 5mg or 0.5mg and then treated it as continuous. (Why?)
+
+> "Apartame [sic], Saccharin, Acesulfame-k, Sorbitol, Xylitol, and Tagatose consumption ranged from 0 to 550 mg and were categorized in intervals of 5 mg each and analyzed as a continuous variable. Erythritol consumption raged from 0 to 1.8mg and was categorized in intervals of 0.5 mg and analyzed as a continuous variable"
+
+This is quite odd, though, it doesn't seem sufficient to explain the overall pattern.
+
+Note: this is not so much an error as an _oddity_. To me, it suggests something rather strange is going on with the data or the model specification. At the very least, it deserves notice and explanation by the authors.
+
+## Conclusions
+
+- There are many errors, inconsistencies, and oddities in this paper
+- At least some of these issues should have been immediately obvious to the authors and to any careful reader
+- The rounding inconsistency and the prevalence of sign errors suggests that the results tables generated by statistical software have been manually altered or corrupted in some way
+- In at least one case, an error has caused an estimate to be presented as statistically significant when it is not
+- This paper does not meet basic standards of consistency, transparency, and reproducibility
+
