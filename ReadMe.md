@@ -14,6 +14,8 @@ Sophie E. Hill
   intervals](#3-asymmetric-confidence-intervals)
 - [4. Inconsistent rounding](#4-inconsistent-rounding)
 - [5. Frequent multiples of 0.008](#5-frequent-multiples-of-0008)
+- [6. Inconsistent interpretations of
+  coefficients](#6-inconsistent-interpretations-of-coefficients)
 - [Conclusions](#conclusions)
 
 This post identifies a number of errors and inconsistencies in the
@@ -711,6 +713,115 @@ information:
   have been. Presumably the authors must have rounded those coefficients
   *before* multiplying by 8 in order to produce so many values that are
   larger multiples in the tables (e.g. -0.168).
+
+## 6. Inconsistent interpretations of coefficients
+
+The main result of the paper, which has been cited in many
+[headlines](https://www.theguardian.com/food/2025/sep/03/sweeteners-can-harm-cognitive-health-equivalent-to-16-years-of-ageing-study-finds#:~:text=Sweeteners%20can%20harm%20cognitive%20health,years%20of%20ageing%2C%20study%20finds),
+is this:
+
+> “Participants in the 2 highest tertiles of LNCS consumption had a
+> **35%** and **62%** higher rate of global cognition decline,
+> respectively (second tertile: β =**−0.016**, 95% CI −0.032 to −0.001,
+> third tertile: β =**−0.024**, 95% CI −0.040 to −0.016, p for trend
+> \<0.001), corresponding to an excess **1.3** and **1.6** years of
+> cognitive aging”
+
+where *excess years of ageing* is calculated by “dividing the 8-year
+cognitive change associated with each trajectory by the annual cognitive
+decline rate observed in the first tertile group”.
+
+Note that the authors do not directly interpret the coefficients (i.e.,
+they do not tell us what the value of $-0.016$ means in this context).
+
+Instead, they interpret these interaction coefficients *relative to the
+main coefficient on time*, which represents the trend in cognitive
+health among the reference category (Tertile 1).
+
+Unfortunately, the authors only report the interaction coefficients in
+the appendix tables, not the main coefficient on time. So we cannot
+directly verify those percentages.
+
+However, since the values for Tertiles 2 and 3 are all relative to the
+*same reference category* (Tertile 1), then the following ratios should
+all be equal:
+
+``` r
+-0.016 / -0.024
+```
+
+    ## [1] 0.6666667
+
+``` r
+35 / 62
+```
+
+    ## [1] 0.5645161
+
+``` r
+1.3 / 1.6
+```
+
+    ## [1] 0.8125
+
+These differences are much too large to be rounding errors.
+
+In fact, I wonder if **6**2% is a typo, since 35% / **5**2% = 0.67,
+which would match the ratio of the estimates.
+
+### Checking other estimate/percentage ratios
+
+eTable 1 reports similar percentages (though not “excess years”) for the
+estimates for Memory, Verbal Fluency, and Executive Function.
+
+<img src="images/table1.png" width="500" />
+
+<br>
+
+Let’s do similar checks for the other estimates and percentages.
+
+Ratios for Memory: :x:
+
+``` r
+-0.008 / -0.024
+```
+
+    ## [1] 0.3333333
+
+``` r
+16.0 / 32.0
+```
+
+    ## [1] 0.5
+
+Ratios for Verbal fluency: :white_check_mark: (ish)
+
+``` r
+-0.024 / -0.040
+```
+
+    ## [1] 0.6
+
+``` r
+110.0 / 173.0
+```
+
+    ## [1] 0.6358382
+
+Ratios for Executive function: :white_check_mark: (ish, likely rounding
+error)
+
+``` r
+0.000 / -0.002
+```
+
+    ## [1] 0
+
+``` r
+0.9 / 6.3
+```
+
+    ## [1] 0.1428571
 
 ## Conclusions
 
