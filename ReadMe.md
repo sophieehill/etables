@@ -1,4 +1,4 @@
-Errors and inconsistencies in quantiative results reported in Gonçalves
+Errors and inconsistencies in quantitative results reported in Gonçalves
 et al. (2025)
 ================
 Sophie E. Hill
@@ -136,7 +136,8 @@ Across 9 appendix tables with 256 regression coefficients, I find:
 - **17 values rounded to 4 decimal places** (all others to 3 decimal
   places), indicating manual editing of tables
 - Over **50%** of all estimates and confidence intervals are **multiples
-  of 0.008**
+  of 0.008**, indicating possible post-hoc rounding and rescaling not
+  mentioned in the text
 
 It is difficult to diagnose exactly what is going on without access to
 the underlying data and code.
@@ -145,8 +146,8 @@ However, two broad conclusions can be drawn:
 
 1.  There are many **errors and inconsistencies** in the results which
     appear to be the result of manual editing.
-2.  There are **strange patterns** in the results which, if genuine,
-    should have been noted and explained by the authors.
+2.  There is **not enough information** in the paper and appendix about
+    how the results were generated.
 
 ## Context
 
@@ -624,6 +625,9 @@ the coefficients larger.
 
 ## 5. Frequent multiples of 0.008
 
+*Note: this section has been edited in response to helpful suggestions
+from commentators.*
+
 A large proportion of the estimates and CI bounds are multiples of
 0.008.
 
@@ -669,168 +673,44 @@ some:
 
 What could be causing this unusual pattern?
 
-Let’s look at the proportion of estimates and CIs divisible by 0.008
-across different categories.
+We know that the median time from wave 1 to wave 3 of the survey was **8
+years**. And the table titles reference “cognitive decline during eight
+years of follow-up”.
 
-- **Explanatory variable**: Three different version of the main EV,
-  which is then interacted with a “timescale” variable (which the text
-  says is the age of the participant in each wave). Highest proportion
-  for the tertiles (\>70%), lower for the individual continuous variable
-  (30-60%), least for the binary daily consumption variable (19%).
+So perhaps they took the interaction coefficients `EV * Time` and then
+multiplied them by 8?
 
-- **Outcome variables**: 55-60% across all four outcome variables. (All
-  outcome variables are z-scores standardized based on Wave 1 mean and
-  standard deviation. The raw scores represent counts, e.g. how many
-  words recalled in the memory test, how many seconds to complete the
-  trail-making test.)
+If the authors did rescale the coefficients like this, they do not
+mention it in the paper or appendix (as far as I can see).
 
-- **Subsets**: Lowest proportions (\<20%) on the without/with diabetes
-  subsets, highest proportions (\>80%) on the complete case subset and
-  under/over 60s
+It’s hard to figure this out because we are lacking some key pieces of
+information:
 
-- **Covariates**: Highest proportion (\>70%) from estimates with no
-  covariates (Unadjusted) or only demographic covariates (Model 1).
-  Though note these are solely from eTables 1-4, all other tables
-  present only estimates with full covariates (Model 2).
+- The paper never actually gives a substantive interpretation of a
+  coefficient, only *relative* interpretations (e.g. “Participants in
+  the 2 highest tertiles of combined LNCS consumption had 110% and 173%
+  higher rates of verbal fluency decline”).
 
-- **Weights**: The paper states that inverse probability weighting (IPW)
-  is used to account for attrition. Presumably IPW is not used in eTable
-  4 (even though it is mentioned in the table notes) since those results
-  are based on “complete cases” - i.e., participants who took part in
-  all three waves. If so, IPW is unlikely to explain the pattern, since
-  eTable 4 displays a very high proportion of 0.008 multiples (94%).
+- The tables only show the interaction coefficients `EV * Time` not the
+  main coefficient on `Time` which would show the trend among the
+  reference category. So we can’t actually tell where those percentages
+  came from.
 
-<!-- -->
+- Although the variable is labelled as `Time` and referred to in the
+  text as “timescale”, it is actually the age of the participant at each
+  wave. (“The timescale was the age of the participant in each wave.”)
 
-    ##                  var prop_div8
-    ## 1            T3*Time      0.77
-    ## 2            T2*Time      0.74
-    ## 3           Tagatose      0.58
-    ## 4            Xylitol      0.58
-    ## 5          Saccharin      0.48
-    ## 6       Acesulfame-k      0.42
-    ## 7           Sorbitol      0.38
-    ## 8          Aspartame      0.37
-    ## 9         Erythritol      0.37
-    ## 10 Daily consumption      0.19
+- In the tables using the tertile variable, the coefficients are
+  labelled as interaction terms (“Tertile 1\*Time”) but in the tables
+  using the individual LNCS variables we just have the name
+  (e.g. “Aspartame”) - although presumably these are also interaction
+  coefficients.
 
-    ##   outcome prop_div8
-    ## 1      VF      0.59
-    ## 2      EF      0.56
-    ## 3      GC      0.56
-    ## 4       M      0.55
-
-    ##     subset prop_div8
-    ## 1 Complete      0.94
-    ## 2      60+      0.90
-    ## 3      <60      0.81
-    ## 4      All      0.54
-    ## 5   w/o db      0.20
-    ## 6     w db      0.15
-
-    ##   model prop_div8
-    ## 1 Mod 1      0.77
-    ## 2 Unadj      0.73
-    ## 3 Mod 2      0.51
-
-The same pattern occurs among the estimates cited in the main text of
-the paper, although the overall proportion is lower (38%).
-
-    ## Proportion of estimates & CIs cited in paper that are divisible by 0.008:
-    ##  0.38
-
-    ## By type:
-
-    ##       name prop_div8
-    ## 1 ci_lower      0.36
-    ## 2 ci_upper      0.38
-    ## 3      est      0.41
-
-<br>
-
-Sometimes odd patterns in regression coefficients may be a warning sign
-about problems with the units or distribution of the explanatory
-variable. This is unlikely to fully explain the pattern of 0.008
-multiples observed here, since it also occurs when the explanatory
-variable is categorical (tertiles of consumption).
-
-    ## # A tibble: 9 × 4
-    ##   table_id iv         subset prop_div
-    ##      <dbl> <chr>      <chr>     <dbl>
-    ## 1        6 Tertile    Yes        1   
-    ## 2        4 Tertile    Yes        0.94
-    ## 3        1 Tertile    No         0.86
-    ## 4        7 Continuous Yes        0.81
-    ## 5        2 Tertile    No         0.69
-    ## 6        5 Continuous No         0.29
-    ## 7        3 Binary     No         0.19
-    ## 8        9 Continuous Yes        0.18
-    ## 9        8 Tertile    Yes        0.15
-
-However, let’s review the details from the paper and appendix for
-completeness:
-
-Sweetener consumption is derived from a self-reported Food Frequency
-Questionnaire. From the appendix:
-
-> “Food and drink consumption in the last 12 months was assessed at
-> baseline using a validated Food Frequency Questionnaire (FFQ) with 114
-> items. For each food item, the frequency of consumption (”more than 3
-> times/day, “2-3 times/day,”once/day”, “5-6 times/week”, “2-4
-> times/week”, “once/week”, “1-3 times/month”, and “never/rarely”) and
-> the number of portions consumed (using standardized portion sizes)
-> were obtained. The amount (grams/day) of each food item was calculated
-> by multiplying the consumption frequency (3 for \>3 times/day, 2 for
-> 2-3 times/day, 1 for 1 time/day, 0.8 for 5-6 times/week, 0.4 for 2-4
-> times/week, 0.1 for 1 time/week, 0.07 for 1-3 times/month, and 0 for
-> never/almost never) by the number of portions and the portion weight.
-> The energy content of the food and drink items in kcal was calculated
-> using the information on energy in 100g estimated by the University of
-> Minnesota Nutrition Data System for Research (NDSR) software. All
-> mixed dishes identified through the FFQ were decomposed into
-> individual ingredients based on household standard recipes according
-> to the national literature.”
-
-The derived variable, total sweetener consumption (mg/day), is heavily
-skewed. The mean daily intake of all sweeteners is 92.1mg, and the
-thresholds of the tertiles are:
-
-- 1st tertile: 0.02mg to 37.2mg
-- 2nd tertile: 37.3mg to 102.3mg
-- 3rd tertile: 102.4mg to 856.5mg
-
-Also of note is the composition of different sweeteners. Sorbitol alone
-accounts for $\frac{63.8}{92.1} \approx 70\%$ of mean daily LNCS
-consumption.
-
-(For context: according to Google, 1 stick of sugar-free gum contains
-about 1250mg of sorbitol and 1 can of Diet Coke contains about 200mg of
-aspartame. So these levels of LNCS consumption don’t seem particularly
-high, which I guess you might expect among middle-aged Brazilian civil
-servants…)
-
-In eTable 3 a binary variable is used, representing daily consumption of
-LNCS vs no/sporadic consumption.
-
-In eTables 5, 7, and 9, consumption of individual sweeteners in mg is
-used as the EV. However, this note adds a rather confusing detail:
-apparently for the individual LNCS variables the authors binned the
-consumption in intervals of 5mg or 0.5mg and then treated it as
-continuous. (Why?)
-
-> “Apartame \[sic\], Saccharin, Acesulfame-k, Sorbitol, Xylitol, and
-> Tagatose consumption ranged from 0 to 550 mg and were categorized in
-> intervals of 5 mg each and analyzed as a continuous variable.
-> Erythritol consumption raged from 0 to 1.8mg and was categorized in
-> intervals of 0.5 mg and analyzed as a continuous variable”
-
-This is quite odd, though, it doesn’t seem sufficient to explain the
-overall pattern.
-
-Note: this is not so much an error as an *oddity*. To me, it suggests
-something rather strange is going on with the data or the model
-specification. At the very least, it deserves notice and explanation by
-the authors.
+- The coefficients are very small in magnitude and are mostly rounded to
+  3dp, which makes it hard to tell what the unscaled coefficients would
+  have been. Presumably the authors must have rounded those coefficients
+  *before* multiplying by 8 in order to produce so many values that are
+  larger multiples in the tables (e.g. -0.168).
 
 ## Conclusions
 
